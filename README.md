@@ -1,2 +1,2 @@
 # Home-assistant-config
-Home assistant is open source home automation platform that runs locally. Here are some of my configurations.
+Home assistant is an open source home automation platform that runs locally. Here are some of my configurations.
