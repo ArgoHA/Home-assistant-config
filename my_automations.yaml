@@ -1,0 +1,2070 @@
+####################################################################
+#                                                                  #
+#                            Служебные                             #
+#                                                                  #
+####################################################################
+
+
+####################################################################
+#          Задержка запуска homekit для загрузки z-wave            #
+####################################################################
+
+- id: '2329344459352'
+  alias: 'Start HomeKit'
+  trigger:
+    - platform: event
+      event_type: zwave.network_ready
+    - platform: event
+      event_type: zwave.network_complete
+    - platform: event
+      event_type: zwave.network_complete_some_dead
+  action:
+    - service: homekit.start
+
+
+
+####################################################################
+#               Установка темы при запуске системы                 #
+####################################################################
+
+- id: '1447566581344'
+  alias: Set theme at startup
+  initial_state: 'on'
+  trigger:
+  - platform: homeassistant
+    event: start
+  action:
+    service: frontend.set_theme
+    data:
+      name: Main
+
+
+
+####################################################################
+#               Уведомление о низком уровне батареи                #
+####################################################################
+
+- id: '1259372459852'
+  alias: Low battery notification
+  initial_state: 'on'
+  trigger:
+  - platform: numeric_state
+    entity_id:
+    - sensor.xi_smoke_battery
+    - sensor.xi_smoke_bedroom_battery
+    - sensor.xi_smoke_kitchen_battery
+    - sensor.xi_water_battery
+    - sensor.xi_water2_battery
+    - sensor.xi_main_door_battery
+    - sensor.xi_wc_door_battery
+    - sensor.xi_window_battery
+    - sensor.xi_pir_hall_battery
+    - sensor.xi_pir_wc_battery
+    - sensor.xi_pir_master_battery
+    - sensor.xi_temp1_battery
+    - sensor.xi_temp2_battery
+    - sensor.xi_temp3_battery
+    - sensor.xi_cube_battery
+    - sensor.xi_holod_battery
+    - sensor.xi_master_work_but_battery
+    - sensor.xi_master_bad_but_battery
+    - sensor.xi_doorbell_battery
+    below: 16
+    for:
+      days: 5
+  action:
+  - service: persistent_notification.create
+    data_template:
+      title: Низкий уровень заряда
+      message: Необходима замена батареек в {{ trigger.to_state.name|default("unknown") }}
+  - service: notify.mobile_app_argo
+    data_template:
+      title: Низкий уровень заряда
+      message: Необходима замена батареек в {{ trigger.to_state.name|default("unknown") }}
+
+
+
+####################################################################
+#                            Выбор темы                            #
+####################################################################
+
+- id: '1229209221355'
+  alias: 'Themes: Enable night Theme'
+  initial_state: 'on'
+  trigger:
+  - entity_id: input_select.theme
+    platform: state
+    to: "Ночная"
+  action:
+  - data:
+      name: slate_moded
+    service: frontend.set_theme
+
+- id: '1229208221256'
+  alias: 'Themes: Enable day Theme'
+  initial_state: 'on'
+  trigger:
+  - entity_id: input_select.theme
+    platform: state
+    to: "Дневная"
+  action:
+  - data:
+      name: Main
+    service: frontend.set_theme
+
+
+
+####################################################################
+#                         Авто перезагрузка                        #
+####################################################################
+
+- id: '1229209121325'
+  alias: 'Auto_restart'
+  initial_state: 'on'
+  trigger:
+  - entity_id: group.family
+    platform: state
+    to: not_home
+    for:
+      minutes: 30
+  condition:
+    condition: numeric_state
+    entity_id: sensor.perezagruzka
+    above: 12
+  action:
+  - service: notify.mobile_app_argo
+    data_template:
+      message: Перезагружаюсь
+  - delay: 0:0:15
+  - service: homeassistant.restart
+
+
+
+####################################################################
+#                                                                  #
+#                           Безопасность                           #
+#                                                                  #
+####################################################################
+
+####################################################################
+#                    Уведомления электричества                     #
+####################################################################
+
+- id: '1973825400182'
+  alias: UPS on
+  initial_state: 'on'
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.ups_online_status
+    to: "off"
+    for:
+      minutes: 1
+  action:
+  - entity_id: script.1543235094321
+    service: script.turn_on
+  - wait_template: "{{ is_state('binary_sensor.ups_online_status', 'on') }}"
+  - entity_id: script.1550393847602
+    service: script.turn_on
+
+
+
+####################################################################
+#                 Уведомление о низком уровне УПС                  #
+####################################################################
+
+- id: '1259372459854'
+  alias: Low UPS notification
+  initial_state: 'on'
+  trigger:
+  - platform: numeric_state
+    entity_id:
+    - sensor.ups_battery
+    below: 26
+  condition:
+  - condition: state
+    entity_id: binary_sensor.ups_online_status
+    state: "off"
+  action:
+  - service: persistent_notification.create
+    data_template:
+      title: Низкий уровень заряда
+      message: Резервное питание практически исчерпано
+  - service: notify.mobile_app_argo
+    data_template:
+      title: Низкий уровень заряда
+      message: Резервное питание практически исчерпано
+
+
+
+####################################################################
+#                     Срабатывание сигнализации                    #
+####################################################################
+
+- id: '1599848623430'
+  alias: Trigger alarm while armed away
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.motion_sensor_158d0003667bcb
+    platform: state
+    to: 'on'
+  - entity_id: binary_sensor.motion_sensor_158d00031b4772
+    platform: state
+    to: 'on'
+  - entity_id: binary_sensor.door_window_sensor_158d0001dcb0e3
+    platform: state
+    to: 'on'
+  - entity_id: binary_sensor.motion_sensor_158d000222ff55
+    platform: state
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: alarm_control_panel.ha_alarm
+    state: armed_away
+  action:
+    service: alarm_control_panel.alarm_trigger
+    entity_id: alarm_control_panel.ha_alarm
+
+
+
+####################################################################
+#        Уведомления и сирена при срабатывании сигнализации        #
+####################################################################
+
+- id: '1842726522374'
+  alias: When alarm was triggered
+  initial_state: 'on'
+  trigger:
+  - entity_id: alarm_control_panel.ha_alarm
+    platform: state
+    to: triggered
+  action:
+  - entity_id: script.1538231974813
+    service: script.turn_on
+  - entity_id: group.all_real_lights
+    service: switch.turn_on
+  - data:
+      gw_mac: 7c:49:eb:b1:df:cb
+      ringtone_id: '0'
+      ringtone_vol: '100'
+    service: xiaomi_aqara.play_ringtone
+  - data:
+      entity_id: light.pre_hall_light
+      effect: 'Police'
+    service: light.turn_on
+  - delay: 0:0:15
+  - data:
+      gw_mac: 7c:49:eb:b1:df:cb
+      ringtone_id: '0'
+      ringtone_vol: '100'
+    service: xiaomi_aqara.play_ringtone
+
+
+
+####################################################################
+#        Уведомления и сирена при отключении сигнализации          #
+####################################################################
+
+- id: '1456793432075'
+  alias: When alarm was disarmed
+  initial_state: 'on'
+  trigger:
+  - entity_id: alarm_control_panel.ha_alarm
+    platform: state
+    from: triggered
+    to: disarmed
+  action:
+  - entity_id: script.1546958494720
+    service: script.turn_on
+  - data:
+      gw_mac: 7c:49:eb:b1:df:cb
+    service: xiaomi_aqara.stop_ringtone
+  - data:
+      entity_id: light.pre_hall_light
+    service: light.turn_off
+
+
+
+####################################################################
+#             Уведомления при срабатывании датчика дыма            #
+####################################################################
+
+- id: '1525848793710'
+  alias: Fire alarm
+  initial_state: 'on'
+  trigger:
+  - platform: state
+    to: 'on'
+    entity_id: 
+    - binary_sensor.smoke_sensor_158d0001fd3dba
+    - binary_sensor.smoke_sensor_158d00024e9df1
+    - binary_sensor.smoke_sensor_158d00020b4760
+  action:
+  - service: notify.mobile_app_argo
+    data_template:
+      title: Внимание!
+      message: Обнаружен дым в {{ trigger.to_state.name|default("unknown") }}
+  - service: media_player.turn_on
+    entity_id: media_player.kabin
+  - delay: 0:0:2
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.0
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/invis.mp3
+      media_content_type: music
+  - delay: 0:0:4
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.7
+  - service: tts.google_translate_say
+    entity_id: media_player.kabin
+    data_template: 
+      message: "Обнаруженн дым в {{ trigger.to_state.name|default('unknown') }}"
+
+
+
+####################################################################
+#         Уведомления при срабатывании датчика утечки газа         #
+####################################################################
+
+- id: '1348746793756'
+  alias: Gas alarm
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.natgas_sensor_158d0002017dc4
+    platform: state
+    to: 'on'
+  action:
+  - entity_id: script.1545657656762
+    service: script.turn_on
+  - service: media_player.turn_on
+    entity_id: media_player.kabin
+  - delay: 0:0:2
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.0
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/invis.mp3
+      media_content_type: music
+  - delay: 0:0:4
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.6
+  - service: tts.google_translate_say
+    entity_id: media_player.kabin
+    data: 
+      message: "Обнаружен газ на кухне"
+
+
+
+####################################################################
+#        Уведомления при срабатывании датчика утечки воды          #
+####################################################################
+
+- id: '1530457210716'
+  alias: Water leak
+  initial_state: 'on'
+  trigger:
+  - platform: state
+    to: 'on'
+    entity_id: 
+    - binary_sensor.water_leak_sensor_158d0002138b8c
+    - binary_sensor.water_leak_sensor_158d0002334c21
+  action:
+  - service: notify.mobile_app_argo
+    data_template:
+      message: Протечка {{ trigger.to_state.name|default("unknown") }}!
+      title: Внимание!
+  - service: media_player.turn_on
+    entity_id: media_player.kabin
+  - delay: 0:0:2
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.0
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/invis.mp3
+      media_content_type: music
+  - delay: 0:0:4
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.6
+  - service: tts.google_translate_say
+    entity_id: media_player.kabin
+    data_template: 
+      message: "Обнаружена протечка воды {{ trigger.to_state.name|default('unknown') }}"
+
+
+
+####################################################################
+#             Уведомления об открытой двери (5 мин)                #
+####################################################################
+
+- id: '1578955201408'
+  alias: Open door alarm
+  initial_state: 'on'
+  trigger:
+    platform: state
+    entity_id: binary_sensor.door_window_sensor_158d0001dcb0e3
+    to: 'on'
+    for:
+      minutes: 5
+  condition:
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d0003667bcb
+    state: 'off'
+    for:
+      minutes: 2
+  action:
+  - entity_id: script.1537832435047
+    service: script.turn_on
+  - service: media_player.turn_on
+    entity_id: media_player.kabin
+  - delay: 0:0:2
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.0
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/invis.mp3
+      media_content_type: music
+  - delay: 0:0:4
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.6
+  - service: tts.google_translate_say
+    entity_id: media_player.kabin
+    data: 
+      message: "А не забылили ли вы закрыть входную дверь?"
+
+
+
+####################################################################
+#   Включение охранной системы при уходе последнего пользователя   #
+####################################################################
+
+- id: '1538754893120'
+  alias: Alarm turn on when we leave
+  initial_state: 'on'
+  trigger:
+    platform: state
+    entity_id: binary_sensor.door_window_sensor_158d0001dcb0e3
+    to: 'on'
+  condition:
+    condition: and
+    conditions:
+      - condition: state
+        entity_id: alarm_control_panel.ha_alarm
+        state: disarmed
+      - condition: state
+        entity_id: group.family
+        state: home
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.motion_sensor_158d00031b4772
+            state: 'on'
+          - condition: state
+            entity_id: binary_sensor.motion_sensor_158d0003667bcb
+            state: 'on'
+  action:
+  - entity_id: script.1536739215145
+    service: script.turn_off
+  - delay: 0:0:2
+  - entity_id: script.1536739215145
+    service: script.turn_on
+
+
+
+####################################################################
+#   Выключение охранной системы по приходу первого пользователя    #
+####################################################################
+
+- id: '2543255632534'
+  alias: Alarm turn off when we are home
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.secure
+    platform: state
+    to: 'on'
+  condition:
+    condition: state
+    entity_id: script.1536739039456
+    state: 'off'
+  action:
+  - service: script.turn_off
+    entity_id: script.1536739039455
+  - delay: 0:0:2
+  - service: script.turn_on
+    entity_id: script.1536739039455
+
+
+
+####################################################################
+#  Выключение охранной системы по приходу первого пользователя 2   #
+####################################################################
+
+- id: '2543255632535'
+  alias: Alarm turn off when we are home_2
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.door_window_sensor_158d0001dcb0e3
+    platform: state
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: script.1536739039455
+    state: 'off'
+  - condition: state
+    entity_id: binary_sensor.secure
+    state: 'off'
+  action:
+  - service: script.turn_off
+    entity_id: script.1536739039456
+  - delay: 0:0:2
+  - service: script.turn_on
+    entity_id: script.1536739039456
+
+
+
+####################################################################
+#             Сигнализация о выключении холодильника               #
+####################################################################
+
+- id: '1439586004923'
+  alias: Alarm when holod is off
+  initial_state: 'on'
+  trigger:
+  - entity_id: sensor.shenzhen_neo_electronics_co_ltd_power_plug_12a_power
+    platform: numeric_state
+    below: '50'
+    for:
+      hours: 3
+  condition:
+  - condition: state
+    entity_id: binary_sensor.secure
+    state: 'off'
+  action:
+  - entity_id: script.1548891135087
+    service: script.turn_on
+
+
+
+####################################################################
+#            Сигнализация о включенном утюе без хозяев             #
+####################################################################
+
+- id: '1444586983953'
+  alias: Alarm when iron is on and we are out
+  initial_state: 'on'
+  trigger:
+  - entity_id: sensor.shenzhen_neo_electronics_co_ltd_power_plug_12a_power_3
+    platform: numeric_state
+    above: '100'
+  condition:
+  - condition: state
+    entity_id: binary_sensor.secure
+    state: 'off'
+  action:
+  - entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_3
+    service: switch.turn_off
+  - service: notify.mobile_app_argo
+    data: 
+      title: Балда!
+      message: Забыл выключить утюг - я выключил за тебя!
+
+
+
+
+####################################################################
+#                                                                  #
+#                           Автоматизации                          #
+#                                                                  #
+####################################################################
+
+
+####################################################################
+#          Включение света в коридоре по приходу домой             #
+####################################################################
+
+- id: '1529594284421'
+  alias: Welcome light
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.door_window_sensor_158d0001dcb0e3
+    platform: state
+    to: 'on'
+  condition:
+  - condition: template
+    value_template: "{{ states('binary_sensor.motion_sensor_158d0003667bcb') != 'on' }}"
+  - condition: template
+    value_template: "{{ states('switch.wall_switch_left_158d000245c5ca') != 'on' }}"
+  action:
+  - entity_id: switch.wall_switch_left_158d000245c5ca
+    service: switch.turn_on
+  - entity_id: script.15216502425301
+    service: script.turn_off
+  - entity_id: script.15216502425301
+    service: script.turn_on
+  - delay: 0:0:1
+  - data:
+      entity_id: camera.generic_camera
+      filename: '/config/www/tmp/alarm.jpg'
+    service: camera.snapshot
+
+
+
+####################################################################
+#                 Включение музыки при входе домой                 #
+####################################################################
+
+- id: '1539500083122'
+  alias: Welcome music
+  initial_state: 'off'
+  trigger:
+  - entity_id: binary_sensor.door_window_sensor_158d0001dcb0e3
+    platform: state
+    to: 'on'
+  action:
+  - entity_id: script.12567619905356
+    service: script.turn_off
+  - service: script.12567619905356
+
+
+
+####################################################################
+#         Выключение света в коридоре пpи уходе последнего         #
+####################################################################
+
+- id: '1524958784421'
+  alias: Goodbye light_off
+  initial_state: 'on'
+  trigger:
+  - entity_id: group.family
+    platform: state
+    to: not_home
+  condition:
+  - condition: state
+    entity_id: group.all_real_lights
+    state: 'on'
+  action:
+  - entity_id: group.all_real_lights
+    service: switch.turn_off
+
+
+
+####################################################################
+#       Выключение света в коридоре при отсутствии движения        #
+####################################################################
+
+- id: '1447334496439'
+  alias: Hallway off after delay
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.motion_sensor_158d00031b4772
+    for:
+      minutes: 49
+    platform: state
+    to: 'off'
+  condition:
+  - condition: state
+    entity_id: switch.wall_switch_left_158d000245c5ca
+    state: 'on'
+  action:
+  - entity_id: switch.wall_switch_left_158d000245c5ca
+    service: switch.turn_off
+  - wait_template:  "{{ is_state('binary_sensor.motion_sensor_158d00031b4772', 'on') }}"
+  - entity_id: switch.wall_switch_left_158d000245c5ca
+    service: switch.turn_on
+
+
+
+####################################################################
+#                       Ночной свет в коридоре                     #
+####################################################################
+
+- id: '1452948563914'
+  alias: Hallway night light
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.motion_sensor_158d00031b4772
+    platform: state
+    to: 'on'
+  - entity_id: switch.wall_switch_left_158d000245c5ca
+    platform: state
+    to: 'off'
+  condition:
+  - condition: time
+    after: '22:00:00'
+    before: '4:00:00'
+  - condition: state
+    entity_id: switch.wall_switch_left_158d000245c5ca
+    state: 'off'
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d00031b4772
+    state: 'on'
+  action:
+  - entity_id: light.pre_hall_light
+    data:
+      brightness: 7
+      rgb_color: [255, 196, 89]
+    service: light.turn_on
+    
+
+
+####################################################################
+#                      Ночной свет в коридоре выкл                 #
+####################################################################
+
+- id: '1450175301800'
+  alias: Hallway night off
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.motion_sensor_158d00031b4772
+    platform: state
+    to: 'off'
+  - entity_id: switch.wall_switch_left_158d000245c5ca
+    platform: state
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: light.pre_hall_light
+    state: 'on'
+  - condition: time
+    after: '22:00:00'
+    before: '4:02:05'
+  action:
+    - entity_id: light.pre_hall_light
+      service: light.turn_off
+
+
+
+####################################################################
+#          Включение света в туалете по датчику движения           #
+####################################################################
+
+- id: '2429968749672'
+  alias: Bath lights on (motion)
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.motion_sensor_158d000224aa83
+    platform: state
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: switch.wall_switch_right_158d000245c5ca
+    state: 'off'
+  action:
+  - entity_id: switch.wall_switch_right_158d000245c5ca
+    service: switch.turn_on
+
+
+
+####################################################################
+#          Включение света в туалете при открытии дверии           #
+####################################################################
+
+- id: '1537001423128'
+  alias: Bath lights on (door)
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.door_window_sensor_158d0001e5d691
+    platform: state
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: switch.wall_switch_right_158d000245c5ca
+    state: 'off'
+  action:
+  - entity_id: switch.wall_switch_right_158d000245c5ca
+    service: switch.turn_on
+
+
+
+####################################################################
+#      Выключение туалета при открытой двери (отсчет от двери)     #
+####################################################################
+
+- id: '4436404449963'
+  alias: Bath light off with open door (on door)
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.door_window_sensor_158d0001e5d691
+    for:
+      minutes: 3
+    platform: state
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d000224aa83
+    state: 'off'
+  - condition: state
+    entity_id: switch.wall_switch_right_158d000245c5ca
+    state: 'on'
+  action:
+  - entity_id: switch.wall_switch_right_158d000245c5ca
+    service: switch.turn_off
+
+
+
+####################################################################
+#    Выключение туалета при открытой двери (отсутствие движения)   #
+####################################################################
+
+- id: '2837334233492'
+  alias: Bath light off with open door (on motion)
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.motion_sensor_158d000224aa83
+    for:
+      minutes: 1
+    platform: state
+    to: 'off'
+  condition:
+  - condition: state
+    entity_id: binary_sensor.door_window_sensor_158d0001e5d691
+    for:
+      minutes: 2
+    state: 'on'
+  - condition: state
+    entity_id: switch.wall_switch_right_158d000245c5ca
+    state: 'on'
+  action:
+  - entity_id: switch.wall_switch_right_158d000245c5ca
+    service: switch.turn_off
+
+
+
+####################################################################
+#    Выключение туалета при закрытии двери и отсутствии движения   #
+####################################################################
+
+- id: '1540840110598'
+  alias: Turn off bath when door was closed with no motion
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.door_window_sensor_158d0001e5d691
+    platform: state
+    to: 'off'
+  condition:
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d000224aa83
+    state: 'off'
+  - condition: state
+    entity_id: switch.wall_switch_right_158d000245c5ca
+    state: 'on'
+  action:
+  - entity_id: switch.wall_switch_right_158d000245c5ca
+    service: switch.turn_off
+
+
+
+####################################################################
+#   Выключение туалета на основе света, движения, двери (день)     #
+####################################################################
+
+- id: '1538321511928'
+  alias: Bath off on door motion and light
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.door_window_sensor_158d0001e5d691
+    platform: state
+    to: 'on'
+  condition:
+  - condition: time
+    after: '4:30:00'
+    before: '21:00:00'
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d000224aa83
+    state: 'on'
+  - condition: state
+    entity_id: switch.wall_switch_right_158d000245c5ca
+    state: 'on'
+  action:
+  - entity_id: script.1556739575120
+    service: script.turn_off
+#   - delay: 0:0:1
+  - entity_id: script.1556739575120
+    service: script.turn_on
+
+
+
+####################################################################
+#    Выключение туалета на основе света, движения, двери (ночь)    #
+####################################################################
+
+- id: '1538411521929'
+  alias: Bath off on door motion and light (night)
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.door_window_sensor_158d0001e5d691
+    platform: state
+    to: 'on'
+  condition:
+  - condition: time
+    after: '21:00:00'
+    before: '4:30:00'
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d000224aa83
+    state: 'on'
+  - condition: state
+    entity_id: switch.wall_switch_right_158d000245c5ca
+    state: 'on'
+  action:
+  - entity_id: script.1536739675112
+    service: script.turn_off
+  - service: script.1536739675112
+
+
+
+####################################################################
+#          Выключение света в туалете при закрытой двери           #
+####################################################################
+
+- id: '3328194583475'
+  alias: Bath light off with close door
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.motion_sensor_158d000224aa83
+    for:
+      minutes: 30
+    platform: state
+    to: 'off'
+  condition:
+  - condition: state
+    entity_id: switch.wall_switch_right_158d000245c5ca
+    state: 'on'
+  - condition: state
+    entity_id: binary_sensor.door_window_sensor_158d0001e5d691
+    for:
+      minutes: 31
+    state: 'off'
+  action:
+  - entity_id: switch.wall_switch_right_158d000245c5ca
+    service: switch.turn_off
+
+
+
+####################################################################
+#                       Имитаця коридор вкл                        #
+####################################################################
+
+- id: '1423095285199'
+  alias: Imitation hallway on
+  initial_state: 'on'
+  trigger:
+  - at: '15:47'
+    platform: time
+  condition:
+  - condition: state
+    entity_id: input_boolean.imitation
+    state: 'on'
+  action:
+  - entity_id: switch.wall_switch_left_158d000245c5ca
+    service: switch.turn_on
+
+
+
+####################################################################
+#                       Имитаця коридор выкл                       #
+####################################################################
+
+- id: '1423095285198'
+  alias: Imitation hallway off
+  initial_state: 'on'
+  trigger:
+  - at: '20:18'
+    platform: time
+  condition:
+  - condition: state
+    entity_id: input_boolean.imitation
+    state: 'on'
+  action:
+  - entity_id: switch.wall_switch_left_158d000245c5ca
+    service: switch.turn_off
+
+
+
+####################################################################
+#                         Имитаця мастер вкл                       #
+####################################################################
+
+- id: '1423095285197'
+  alias: Imitation master on
+  initial_state: 'on'
+  trigger:
+  - at: '18:06'
+    platform: time
+  condition:
+  - condition: state
+    entity_id: input_boolean.imitation
+    state: 'on'
+  action:
+  - entity_id: group.my_aquara_switches
+    service: switch.turn_on
+
+
+
+####################################################################
+#                        Имитаця мастер выкл                       #
+####################################################################
+
+- id: '1423095285196'
+  alias: Imitation master off
+  initial_state: 'on'
+  trigger:
+  - at: '19:28'
+    platform: time
+  condition:
+  - condition: state
+    entity_id: input_boolean.imitation
+    state: 'on'
+  action:
+  - entity_id: group.my_aquara_switches
+    service: switch.turn_off
+
+
+
+####################################################################
+#                       Имитация вкл по уходу                      #
+####################################################################
+
+- id: '1219255551321'
+  alias: Imitation on when no one is at home
+  initial_state: 'on'
+  trigger:
+  - entity_id: group.family
+    platform: state
+    to: not_home
+    for:
+      days: 1
+  action:
+  - entity_id: input_boolean.imitation
+    service: input_boolean.turn_on
+
+
+
+####################################################################
+#         Включение света в мастерской по кнопке (основной)        #
+####################################################################
+
+- id: '1557349843164'
+  alias: Master main light turn on by switch
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d00021387f3
+      click_type: single
+  condition:
+  - condition: state
+    entity_id: group.my_all_lights
+    state: 'off'
+  action:
+  - entity_id: group.my_aquara_switches
+    service: switch.turn_on
+
+
+
+####################################################################
+#     Включение света в мастерской по кнопке (включена правая)     #
+####################################################################
+
+- id: '1567349843364'
+  alias: Master half turn on by switch (half to be on)
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d00021387f3
+      click_type: double
+  condition:
+  - condition: state
+    entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+    state: 'on'
+  - condition: state
+    entity_id: group.my_aquara_switches
+    state: 'off'
+  action:
+  - entity_id: group.my_aquara_switches
+    service: switch.turn_on
+
+
+
+####################################################################
+#         Включение света в мастерской по кнопке (половина)        #
+####################################################################
+
+- id: '1527346843464'
+  alias: Master half turn on by switch (left to be on)
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d00021387f3
+      click_type: double
+  condition:
+  - condition: state
+    entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+    state: 'off'
+  - condition: state
+    entity_id: group.my_aquara_switches
+    state: 'on'
+  action:
+  - entity_id: scene.more_light
+    service: scene.turn_on
+
+
+
+####################################################################
+#      Включение света в мастерской по кнопке (включена левая)     #
+####################################################################
+
+- id: '1567349844464'
+  alias: Master half turn on by switch (right to be on)
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d00021387f3
+      click_type: double
+  condition:
+  - condition: state
+    entity_id: group.my_all_lights
+    state: 'off'
+  action:
+  - entity_id: group.my_all_lights
+    service: switch.turn_on
+
+
+
+####################################################################
+#        Выключение света в мастерской по кнопке (весь свет)       #
+####################################################################
+
+- id: '1577349843464'
+  alias: Master turn off by switch
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d00021387f3
+      click_type: single
+  condition:
+  - condition: state
+    entity_id: group.my_all_lights
+    state: 'on'
+  action:
+  - service: switch.turn_off
+    entity_id: group.my_all_lights
+  - service: switch.turn_off
+    entity_id: switch.wall_switch_left_158d000245c5ca
+
+
+
+####################################################################
+#     Выключение света в мастерской по кнопке (выключена левая)    #
+####################################################################
+
+- id: '1587349543164'
+  alias: Master half turn off by switch (left to be off)
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d00021387f3
+      click_type: double
+  condition:
+  - condition: state
+    entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+    state: 'on'
+  - condition: state
+    entity_id: group.my_aquara_switches
+    state: 'on'
+  action:
+  - entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+    service: switch.turn_off
+
+
+
+####################################################################
+#                 Выкл кондей когда окно открывать                 #
+####################################################################
+
+- id: '1543453209495'
+  alias: A\C off when window gets open
+  initial_state: 'on'
+  trigger:
+  - entity_id: binary_sensor.door_window_sensor_158d00024e2906
+    platform: state
+    to: 'on'
+  condition:
+  - condition: template
+    value_template: "{{ states('climate.konditsioner') != 'off' }}"
+  action:
+  - data:
+      entity_id: climate.konditsioner
+      hvac_mode: 'off'
+    service: climate.set_hvac_mode
+
+
+
+####################################################################
+#              Звонок в дверь, когда никого нет дома               #
+####################################################################
+
+- id: '1553769488902'
+  alias: Ring when out of home
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d000213283c
+      click_type: single
+  condition:
+  - condition: state
+    entity_id: group.family
+    state: not_home
+  - condition: state
+    entity_id: binary_sensor.door_window_sensor_158d0001dcb0e3
+    state: 'off'
+  action:
+  - entity_id: script.15478509210954
+    service: script.turn_off
+  - service: script.15478509210954
+
+
+
+####################################################################
+#             Звонок в дверь, когда кто-то есть дома               #
+####################################################################
+
+- id: '1553769488903'
+  alias: Ring at home
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d000213283c
+      click_type: single
+  condition:
+  - condition: state
+    entity_id: group.family
+    state: home
+  - condition: state
+    entity_id: binary_sensor.door_window_sensor_158d0001dcb0e3
+    state: 'off'
+  action:
+  - service: script.turn_on
+    data:
+      entity_id:
+      - script.15567609905454
+      - script.15517609922001
+
+
+
+####################################################################
+#                 TV на mute при звонке в дверь                    #
+####################################################################
+
+- id: '1553769418202'
+  alias: TV on mute by ring
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d000213283c
+      click_type: single
+  condition:
+  - condition: state
+    entity_id: group.family
+    state: 'home'
+  action:
+  - entity_id: script.15517609922001
+    service: script.turn_on
+
+
+
+####################################################################
+#               Выключение всего по уходу со звонка                #
+####################################################################
+
+- id: '1557466488621'
+  alias: Turn everything off on leaving
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d000213283c
+      click_type: single
+  condition:
+  - condition: state
+    entity_id: binary_sensor.door_window_sensor_158d0001dcb0e3
+    state: 'on'
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d0003667bcb
+    state: 'on'
+  action:
+  - entity_id: group.all_real_lights
+    service: switch.turn_off
+  - entity_id: cover.curtain_158d0002c54874
+    service: cover.close_cover
+  - data:
+      entity_id: climate.konditsioner
+      hvac_mode: 'off'
+    service: climate.set_hvac_mode
+
+
+
+####################################################################
+#         Выкл коридор и мастер от кровати одним нажатием          #
+####################################################################
+
+- id: '15537294823948'
+  alias: Hallway and master off around bad
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d00021367b1
+      click_type: single
+  condition:
+    condition: state
+    entity_id: group.nightmare
+    state: 'on'
+  action:
+  - entity_id: group.nightmare
+    service: switch.turn_off
+  - delay: 0:0:1
+  - entity_id: light.pre_hall_light
+    service: light.turn_off
+
+
+
+####################################################################
+#             Выкл мастер от кровати двойным нажатием              #
+####################################################################
+
+- id: '15537294823949'
+  alias: Master off around bad
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d00021367b1
+      click_type: double
+  condition:
+    condition: state
+    entity_id: switch.skylight
+    state: 'on'
+  action:
+    entity_id: switch.skylight
+    service: switch.turn_off
+
+
+
+####################################################################
+#              Вкл мастер от кровати двойным нажатием              #
+####################################################################
+
+- id: '15537294823950'
+  alias: Master on around bad
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d00021367b1
+      click_type: double
+  condition:
+    condition: state
+    entity_id: switch.skylight
+    state: 'off'
+  action:
+    entity_id: switch.skylight
+    service: switch.turn_on
+
+
+
+####################################################################
+#                 Вкл коридор по кнопке у кровати                  #
+####################################################################
+
+- id: '1554569488604'
+  alias: Hallway on around bad
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d00021367b1
+      click_type: single
+  condition:
+    condition: state
+    entity_id: group.nightmare
+    state: 'off'
+  action:
+    entity_id: switch.wall_switch_left_158d000245c5ca
+    service: switch.turn_on
+
+
+
+####################################################################
+#                 Вкл коридор по кнопке у дивана                   #
+####################################################################
+
+- id: '1554569488617'
+  alias: Hallway on mom's button
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: xiaomi_aqara.click
+    event_data:
+      entity_id: binary_sensor.switch_158d00023e3d84
+      click_type: single
+  action:
+    entity_id: switch.wall_switch_left_158d000245c5ca
+    service: switch.toggle
+
+
+
+####################################################################
+#                Нефиг жрать ночью прикол холодиль                 #
+####################################################################
+
+- id: '1528567478872'
+  alias: Holodni prikol
+  initial_state: 'on'
+  trigger:
+    platform: state
+    entity_id: binary_sensor.door_window_sensor_158d0002ca121c
+    to: 'on'
+  condition:
+    condition: state
+    entity_id: input_boolean.joke
+    state: 'on'
+  action: 
+  - data:
+      gw_mac: 7c:49:eb:b1:df:cb
+      ringtone_id: '0'
+      ringtone_vol: '5'
+    service: xiaomi_aqara.play_ringtone
+
+
+
+####################################################################
+#                     Правильно, не жри ночью                      #
+####################################################################
+
+- id: '1594057473472'
+  alias: Holodni prikol off
+  initial_state: 'on'
+  trigger:
+    platform: state
+    entity_id: binary_sensor.door_window_sensor_158d0002ca121c
+    to: 'off'
+  condition:
+    condition: state
+    entity_id: input_boolean.joke
+    state: 'on'
+  action: 
+  - data:
+      gw_mac: 7c:49:eb:b1:df:cb
+    service: xiaomi_aqara.stop_ringtone
+
+
+
+####################################################################
+#                        Таймер включение UI                       #
+####################################################################
+
+- id: '1534671660145'
+  alias: Timer on
+  initial_state: 'on'
+  trigger:
+    platform: template
+    value_template: "{{ states('sensor.time') == (states.input_datetime.timer_start.attributes.timestamp | int | timestamp_custom('%H:%M', 'False')) }}"
+  condition:
+    condition: state
+    entity_id: input_boolean.timer
+    state: 'on'
+  action:
+  - service: switch.turn_on
+    data_template: 
+      entity_id: >-
+        {% if states.input_select.plugs.state == 'Утюг' %}
+          switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_3
+        {% elif states.input_select.plugs.state == 'Курица' %}
+          switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+        {% endif %}
+
+
+
+####################################################################
+#                        Таймер включение UI                       #
+####################################################################
+
+- id: '1532621441255'
+  alias: Timer off
+  initial_state: 'on'
+  trigger:
+    platform: template
+    value_template: "{{ states('sensor.time') == (states.input_datetime.timer_stop.attributes.timestamp | int | timestamp_custom('%H:%M', 'False')) }}"
+  condition:
+    condition: state
+    entity_id: input_boolean.timer
+    state: 'on'
+  action:
+  - service: switch.turn_off
+    data_template: 
+      entity_id: >-
+        {% if states.input_select.plugs.state == 'Утюг' %}
+          switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_3
+        {% elif states.input_select.plugs.state == 'Курица' %}
+          switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+        {% endif %}
+
+
+
+####################################################################
+#                      Расписание для пылесоса                     #
+####################################################################
+
+- id: '1534671660045'
+  alias: Vacuum go hard
+  initial_state: 'off'
+  trigger:
+    platform: template
+    value_template: "{{ states('sensor.time') == (states.input_datetime.vacuum_go.attributes.timestamp | int | timestamp_custom('%H:%M', 'False')) }}"
+  action:
+  - data:
+      entity_id: vacuum.xiaomi_vacuum_cleaner
+    service: vacuum.start
+  - service: automation.turn_off
+    entity_id: automation.vacuum_go_hard
+
+
+
+####################################################################
+#                          Супер будильник                         #
+####################################################################
+
+- id: '1530598614235'
+  alias: Super_boodilnik
+  initial_state: 'off'
+  trigger:
+    platform: template
+    value_template: "{{ states('sensor.time') == (states.input_datetime.alarm_morning.attributes.timestamp | int | timestamp_custom('%H:%M', 'False')) }}"
+  condition:
+    condition: time
+    weekday:
+      - mon
+      - tue
+      - wed
+      - thu
+      - fri
+  action:
+  - entity_id: script.15217202925102
+    service: script.turn_off
+  - service: script.15217202925102
+
+
+
+####################################################################
+#                  Окончание таймера будильника                    #
+####################################################################
+
+- id: '1530528624122'
+  alias: Super boodilnik's timer is over
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.leave
+  condition:
+    condition: state
+    entity_id: script.15217202925102
+    state: 'on'
+  action:
+  - service: input_boolean.turn_on
+    entity_id: input_boolean.timer_is_over
+  - service: input_boolean.turn_off
+    entity_id: input_boolean.timer_is_over
+
+
+
+####################################################################
+#                      Отключение будильника                       #
+####################################################################
+
+- id: '1530528614321'
+  alias: Super boodilnik off by door
+  initial_state: 'on'
+  trigger:
+    platform: state
+    entity_id: binary_sensor.door_window_sensor_158d0001dcb0e3
+    to: 'on'
+  condition:
+    condition: state
+    entity_id: script.15217202925102
+    state: 'on'
+  action:
+    service: script.turn_off
+    entity_id: script.15217202925102
+
+
+
+####################################################################
+#                        Выходной будильник                        #
+####################################################################
+
+- id: '1530598614242'
+  alias: Weekend_boodilnik
+  initial_state: 'off'
+  trigger:
+    platform: template
+    value_template: "{{ states('sensor.time') == (states.input_datetime.weekend_morning.attributes.timestamp | int | timestamp_custom('%H:%M', 'False')) }}"
+  condition:
+    condition: time
+    weekday:
+      - sat
+      - sun
+  action:
+  - entity_id: script.15217202925112
+    service: script.turn_off
+  - service: script.15217202925112
+
+
+
+####################################################################
+#                            Привет Арго                           #
+####################################################################
+
+- id: '1530394114232'
+  alias: Hi Argo
+  initial_state: 'on'
+  trigger:
+  - platform: state
+    entity_id: person.argishti
+    to: home
+  condition:
+  - condition: template
+    value_template: "{{ states('person.gayane') != 'home' }}"
+  - condition: template
+    value_template: "{{ states('person.armen') != 'home' }}"
+  action:
+  - entity_id: script.15216502425300
+    service: script.turn_off
+  - service: script.15216502425300
+  - service: script.15217202933333
+
+
+
+####################################################################
+#                           Привет Олеся                           #
+####################################################################
+
+- id: '1530394114229'
+  alias: Hi Olesya
+  initial_state: 'on'
+  trigger:
+  - platform: state
+    entity_id: person.olesya
+    to: home
+  condition:
+  - condition: template
+    value_template: "{{ states('person.gayane') != 'home' }}"
+  - condition: template
+    value_template: "{{ states('person.armen') != 'home' }}"
+  - condition: template
+    value_template: "{{ states('person.argo') != 'home' }}"
+  action:
+  - entity_id: script.15216502425300
+    service: script.turn_off
+  - service: script.15216502425300
+  
+
+
+####################################################################
+#                            Привет Гаяне                          #
+####################################################################
+
+- id: '1530394114233'
+  alias: Hi Gayane
+  initial_state: 'on'
+  trigger:
+    platform: state
+    entity_id: person.gayane
+    to: home
+  condition:
+  - condition: template
+    value_template: "{{ states('person.argishti') != 'home' }}"
+  - condition: template
+    value_template: "{{ states('person.armen') != 'home' }}"
+  action:
+  - entity_id: script.15216502425300
+    service: script.turn_off
+  - service: script.15216502425300
+
+
+
+####################################################################
+#                            Привет Армен                          #
+####################################################################
+
+- id: '1530394114234'
+  alias: Hi Armen
+  initial_state: 'on'
+  trigger:
+    platform: state
+    entity_id: person.armen
+    to: home
+  condition:
+  - condition: template
+    value_template: "{{ states('person.argishti') != 'home' }}"
+  - condition: template
+    value_template: "{{ states('person.gayane') != 'home' }}"
+  action:
+  - entity_id: script.15216502425300
+    service: script.turn_off
+  - service: script.15216502425300
+
+
+
+####################################################################
+#                     Что купить по пути домой                     #
+####################################################################
+
+- id: '1530354314132'
+  alias: What to buy
+  initial_state: 'on'
+  trigger:
+    platform: zone
+    zone: zone.zoo
+    entity_id: person.gayane
+    event: leave
+  condition:
+  - condition: template
+    value_template: "{{ states.sensor.shopping_list.state | length > 1 }}"
+  - condition: time
+    after: '15:00:00'
+    before: '21:00:00'
+  action:
+  - service: notify.mobile_app_argo
+    data_template:
+      message: "Купить:\n{{states('sensor.shopping_list')}}"
+  - service: notify.mobile_app_iphone
+    data_template:
+      message: "Купить:\n{{states('sensor.shopping_list')}}"
+
+
+
+####################################################################
+#                     Арго доехал до дачи Юрия                     #
+####################################################################
+
+- id: '1531354313332'
+  alias: Argo got to Yuri's dacha
+  initial_state: 'off'
+  trigger:
+    platform: zone
+    zone: zone.dacha_yuri
+    entity_id: person.argishti
+    event: enter
+  action:
+  - service: notify.mobile_app_iphone
+    data:
+      message: "Арго доехал до дачи Юрия"
+  - service: notify.mobile_app_argo
+    data:
+      message: "Арго доехал до дачи Юрия"
+
+
+
+####################################################################
+#                     Арго доехал до Лососика                      #
+####################################################################
+
+- id: '1531154343336'
+  alias: Argo got to Lososik
+  initial_state: 'on'
+  trigger:
+    platform: zone
+    zone: zone.olesya_house
+    entity_id: person.argishti
+    event: enter
+  condition:
+  - condition: state
+    entity_id: person.olesya
+    state: olesya_house
+    for: 0:10:0
+  action:
+  - service: notify.mobile_app_argo
+    data:
+      message: "Не забудь про тапочки"
+  - service: notify.mobile_app_iphone_olesia
+    data:
+      message: "Арго приехал :)"
+
+      
+      
+####################################################################
+#                          Алёрт для Арго                          #
+####################################################################
+
+- id: '1531154343349'
+  alias: Third alert for Argo
+  initial_state: 'on'
+  trigger:
+  - platform: numeric_state
+    entity_id:
+    - proximity.pre_home_armen
+    - proximity.pre_home_gayane
+    below: 3
+  condition:
+  - condition: or
+    conditions:
+    - condition: template
+      value_template: "{{ is_state_attr('proximity.pre_home_armen', 'dir_of_travel', 'towards') }}"
+    - condition: template
+      value_template: "{{ is_state_attr('proximity.pre_home_gayane', 'dir_of_travel', 'towards') }}"
+  - condition: state
+    entity_id: person.argishti
+    state: home
+  action:
+  - service: notify.mobile_app_argo
+    data_template:
+      message: Кажется, {{ trigger.to_state.name|default("unknown") }} подъезжает
+
+
+
+####################################################################
+#                    Таймер для задрота ребенка                    #
+####################################################################
+
+- id: '1531354211115'
+  alias: Timer for gamer kid
+  initial_state: 'on'
+  trigger:
+    platform: state
+    entity_id: binary_sensor.tv_1
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: input_boolean.kids_timer
+    state: 'on'
+  - condition: state
+    entity_id: timer.kids
+    state: idle
+  action:
+  - service: timer.cancel
+    entity_id: timer.kids
+  - service: timer.start
+    data_template:
+      entity_id: timer.kids
+      duration:
+        minutes: "{{ states('input_number.kid') | int }}"
+
+
+
+####################################################################
+#              Таймер для задрота ребенка закончился               #
+####################################################################
+
+- id: '1533354911325'
+  alias: Timer for gamer kid ends
+  initial_state: 'on'
+  trigger:
+  - platform: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.kids
+  condition:
+    condition: state
+    entity_id: input_boolean.kids_timer
+    state: 'on'
+  action:
+  - service: switch.turn_off
+    entity_id: switch.plug_158d0001198fd1
+  - service: input_boolean.turn_off
+    entity_id: input_boolean.kids_timer
+
+
+
+####################################################################
+#                Таймер для задрота ребенка отключен               #
+####################################################################
+
+- id: '1513254513325'
+  alias: Timer off by parent
+  initial_state: 'on'
+  trigger:
+    platform: state
+    entity_id: input_boolean.kids_timer
+    to: 'off'
+  action:
+  - service: timer.cancel
+    entity_id: timer.kids
+
+
+
+####################################################################
+#                Таймер для задрота ребенка включен                #
+####################################################################
+
+- id: '1513754510321'
+  alias: Timer on by parent
+  initial_state: 'on'
+  trigger:
+    platform: state
+    entity_id: input_boolean.kids_timer
+    to: 'on'
+  condition: 
+    condition: state
+    entity_id: binary_sensor.tv_1
+    state: 'on'
+  action:
+  - service: timer.cancel
+    entity_id: timer.kids
+  - service: timer.start
+    data_template:
+      entity_id: timer.kids
+      duration:
+        minutes: "{{ states('input_number.kid') | int }}"
+
+
+
+####################################################################
+#                     Авто перезагрузка грелки                     #
+####################################################################
+
+- id: '1219200981112'
+  alias: Auto restart of snake heater_1
+  initial_state: 'off'
+  trigger:
+  - entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+    platform: state
+    to: 'on'
+    for:
+      minutes: 85
+  action:
+  - entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+    service: switch.turn_off
+  - delay: 0:0:10
+  - entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+    service: switch.turn_on
+
+
+
+####################################################################
+#                       Авто включение грелки                      #
+####################################################################
+
+- id: '1219200981113'
+  alias: Auto restart of snake heater_2
+  initial_state: 'off'
+  trigger:
+  - entity_id: binary_sensor.snake
+    platform: state
+    to: 'off'
+    for:
+      minutes: 10
+  action:
+  - entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+    service: switch.turn_off
+  - delay: 0:0:10
+  - entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+    service: switch.turn_on
+
+
+
+####################################################################
+#                           Тест с кубиком                         #
+####################################################################
+
+- id: '1219201981512'
+  alias: cub test
+  initial_state: 'on'
+  trigger:
+    platform: event
+    event_type: xiaomi_aqara.cube_action
+    event_data:
+      entity_id: binary_sensor.cube_158d00028af5aa
+      action_type: free_fall
+  action:
+  - entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+    service: switch.turn_on
+  - delay:
+      seconds: 0.3
+  - entity_id: switch.shenzhen_neo_electronics_co_ltd_power_plug_12a_switch_2
+    service: switch.turn_off
+
+
+
+####################################################################
+#                           С новым годом                          #
+####################################################################
+
+- id: '1211101911511'
+  alias: Happy new year
+  initial_state: 'off'
+  trigger:
+    platform: time
+    at: "00:02:16"
+  condition:
+    condition: template
+    value_template: "{{ is_state('sensor.date', '2020-01-01') }}"
+  action:
+    service: script.turn_on
+    entity_id: script.15216502017583
+
+
+
+####################################################################
+#                          Симон за уборку                         #
+####################################################################
+
+- id: '1211101000329'
+  alias: Simone go
+  initial_state: 'on'
+  trigger:
+    platform: time
+    at: "11:00:00"
+  condition:
+  - condition: time
+    weekday:
+        - mon
+        - wed
+        - fri
+  action:
+    service: vacuum.start
+    entity_id: vacuum.xiaomi_vacuum_cleaner
+
+

@@ -1,0 +1,671 @@
+'1538231974813':
+  alias: Alarm notify
+  sequence:
+  - service: notify.mobile_app_argo
+    data:
+      message: "Зафиксировано проникновение!"
+      data:
+        attachment:
+          url: "https://example.com:8123/local/tmp/alarm.jpg"
+          content-type: jpg
+  # - data:
+  #     message: Сработала охранная система!
+  #     title: Внимание!
+  #   service: notify.mobile_app_iphonearm
+  # - data:
+  #     message: Сработала охранная система!
+  #     title: Внимание!
+  #   service: notify.ios_gayane
+
+
+'1536739215145':
+  alias: Alarm on by leaving home
+  sequence:
+  - wait_template: "{{ is_state('binary_sensor.secure', 'off') }}"
+    timeout: '00:40:00'
+  - entity_id: script.1536739215146
+    service: script.turn_on
+
+
+'1536739215146':
+  alias: Alarm on by leaving home_2
+  sequence:
+  - condition: state
+    entity_id: binary_sensor.secure
+    state: 'off'
+  - entity_id: alarm_control_panel.ha_alarm
+    service: alarm_control_panel.alarm_arm_away
+    data:
+      code: '0000'
+
+
+'1536739039455':
+  alias: Alarm off by comming home
+  sequence:
+  - wait_template: "{{ is_state('binary_sensor.door_window_sensor_158d0001dcb0e3', 'on') }}"
+  - entity_id: alarm_control_panel.ha_alarm
+    service: alarm_control_panel.alarm_disarm
+    data:
+      code: '0000'
+  - entity_id: input_boolean.imitation
+    service: input_boolean.turn_off
+
+
+'1536739039456':
+  alias: Alarm off by comming home_2
+  sequence:
+  - wait_template: "{{ is_state('binary_sensor.secure', 'on') }}"
+  - entity_id: alarm_control_panel.ha_alarm
+    service: alarm_control_panel.alarm_disarm
+    data:
+      code: '0000'
+  - entity_id: input_boolean.imitation
+    service: input_boolean.turn_off
+
+
+
+'1546958494720':
+  alias: Alarm off notify
+  sequence:
+  - data:
+      message: Охранная система отключена!
+      title: Внимание!
+    service: notify.mobile_app_argo
+#  - data:
+#      message: Охранная система отключена!
+#      title: Внимание!
+#    service: notify.mobile_app_iphonearm
+#  - data:
+#      message: Охранная система отключена!
+#      title: Внимание!
+#    service: notify.ios_gayane
+
+'1543235094321':
+  alias: UPS alarm on
+  sequence:
+  - data:
+      message: Включено резервное питание!
+      title: Потеря электричества!
+    service: notify.mobile_app_argo
+#  - data:
+#      message: Включено резервное питание!
+#      title: Потеря электричества!
+#    service: notify.mobile_app_iphonearm
+#  - data:
+#      message: Включено резервное питание!
+#      title: Потеря электричества!
+#    service: notify.ios_gayane
+
+
+'1550393847602':
+  alias: UPS alarm off
+  sequence:
+  - data:
+      message: Резервное питание отключено!
+      title: Электричество в норме!
+    service: notify.mobile_app_argo
+#  - data:
+#      message: Резервное питание отключено!
+#      title: Электричество в норме!
+#    service: notify.mobile_app_iphonearm
+#  - data:
+#      message: Резервное питание отключено!
+#      title: Электричество в норме!
+#    service: notify.ios_gayane
+    
+
+'1545657656762':
+  alias: Gas alarm
+  sequence:
+  - data:
+      message: Обнаружена утечка газа на кухне!
+      title: Внимание!
+    service: notify.mobile_app_argo
+#   - data:
+#       message: Обнаружена утечка газа на кухне!
+#       title: Внимание!
+#     service: notify.mobile_app_iphonearm
+#  - data:
+#      message: Обнаружена утечка газа на кухне!
+#      title: Внимание!
+#    service: notify.ios_gayane
+
+
+
+'1537832435047':
+  alias: Open door
+  sequence:
+  - data:
+      message: Закройте входную дверь!
+      title: Внимание!
+    service: notify.mobile_app_argo
+#  - data:
+#      message: Закройте входную дверь!
+#      title: Внимание!
+#    service: notify.mobile_app_iphonearm
+#  - data:
+#      message: Закройте входную дверь!
+#      title: Внимание!
+#    service: notify.ios_gayane
+
+'1548891135087':
+  alias: Notify on holod not working
+  sequence:
+  - data:
+      message: Обнаружена проблема с холодильником!
+      title: Внимание!
+    service: notify.mobile_app_argo
+#   - data:
+#       message: Обнаружена проблема с холодильником!
+#       title: Внимание!
+#     service: notify.mobile_app_iphonearm
+
+'1556739575120':
+  alias: Bath wait for humidity then off
+  sequence:
+  - delay: 0:0:1
+  - condition: state
+    entity_id: binary_sensor.door_window_sensor_158d0001e5d691
+    state: 'on'
+  - delay: 0:2:0
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d000224aa83
+    state: 'off'
+  - wait_template: "{{ states('sensor.humidity_158d0002279c7d')|float < 65 }}"
+    timeout: '00:30:00'
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d000224aa83
+    state: 'off'
+  - condition: state
+    entity_id: switch.wall_switch_right_158d000245c5ca
+    state: 'on'
+  - data:
+      entity_id: switch.wall_switch_right_158d000245c5ca
+    service: switch.turn_off
+
+
+'1536739675112':
+  alias: Bath wait for humidity then off (night)
+  sequence:
+  - delay: 0:0:1
+  - condition: state
+    entity_id: binary_sensor.door_window_sensor_158d0001e5d691
+    state: 'on'
+  - data:
+      entity_id: switch.wall_switch_right_158d000245c5ca
+    service: switch.turn_off
+
+'1563499112323':
+  alias: Get snapshot
+  sequence:
+  - data:
+      entity_id: camera.generic_camera
+      filename: '/config/www/tmp/test.jpg'
+    service: camera.snapshot
+
+
+'15478509210954':
+  alias: Ring then stop gaf
+  sequence:
+  - data:
+      gw_mac: 7c:49:eb:b1:df:cb
+      ringtone_id: '8'
+      ringtone_vol: '65'
+    service: xiaomi_aqara.play_ringtone
+  - delay: 0:0:3
+  - data:
+      gw_mac: 7c:49:eb:b1:df:cb
+    service: xiaomi_aqara.stop_ringtone
+
+
+'15567609905454':
+  alias: Ring the song
+  sequence:
+  - data:
+      gw_mac: 7c:49:eb:b1:df:cb
+      ringtone_id: '10'
+      ringtone_vol: '45'
+    service: xiaomi_aqara.play_ringtone
+
+
+'12567619905356':
+  alias: Sing then stop welcome song
+  sequence:
+  - data:
+      gw_mac: 7c:49:eb:b1:df:cb
+      ringtone_id: '23'
+      ringtone_vol: '75'
+    service: xiaomi_aqara.play_ringtone
+  - delay: 0:0:6
+  - data:
+      gw_mac: 7c:49:eb:b1:df:cb
+    service: xiaomi_aqara.stop_ringtone
+
+
+
+'15278309211090':
+  alias: Super boodilnik
+  sequence:
+  - service: switch.turn_on
+    entity_id: switch.wall_switch_left_158d00022363c5
+  - delay: 0:0:10
+  - service: switch.turn_on
+    entity_id: switch.wall_switch_right_158d00022363c5
+  - delay: 0:5:0
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d00031b4772
+    state: 'off'
+    for:
+      minutes: 19
+  - data:
+      gw_mac: 7c:49:eb:b1:df:cb
+      ringtone_id: '23'
+      ringtone_vol: '75'
+    service: xiaomi_aqara.play_ringtone
+
+
+'15517609922001':
+  alias: TV mute
+  sequence:
+  - condition: state
+    entity_id: media_player.televizor
+    state: 'on'
+  - service: media_player.volume_mute
+    data:
+      is_volume_muted: true
+    entity_id: media_player.televizor
+  - wait_template: "{{ is_state('binary_sensor.door_window_sensor_158d0001dcb0e3', 'on') }}"
+    timeout: '00:10:00'
+  - service: media_player.volume_mute
+    data:
+      is_volume_muted: false
+    entity_id: media_player.televizor
+
+
+
+
+'15217202925102':
+  alias: Say good morning
+  sequence:
+  - service: timer.cancel
+    entity_id: timer.leave
+  - service: timer.start
+    data_template:
+      entity_id: timer.leave
+      duration:
+        minutes: "{{ (state_attr('input_datetime.leave_timer', 'timestamp') -
+    state_attr('input_datetime.alarm_morning', 'timestamp')) // 60 }}"
+  - service: media_player.turn_on
+    entity_id: media_player.kabin
+  - delay: 0:0:4
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.0
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/invis.mp3
+      media_content_type: music
+  - delay: 0:0:10
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.3
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/birds.mp3
+      media_content_type: music
+  - delay: 0:0:10
+  # - delay: 0:0:3
+  # - service: cover.open_cover
+  #   entity_id: cover.curtain_158d0002c54874
+  # - delay: 0:0:3
+  - service: media_player.media_stop
+    entity_id: media_player.kabin
+  - service: switch.turn_on
+    entity_id: switch.wall_switch_right_158d00022363c5
+  - delay: 0:0:1
+  - service: tts.google_translate_say
+    entity_id: media_player.kabin
+    data_template:
+      message: "Доброе утро. Сейчас {{states('sensor.time')}}. В Москве {{states('sensor.outdoor_temperature')|int}} градусов. Пора вставать"
+  - delay: 0:0:5
+  - service: switch.turn_on
+    entity_id: switch.wall_switch_left_158d00022363c5
+
+  - delay: 0:0:30
+  - service: script.turn_on
+    entity_id: script.15217202925321
+  - delay: 0:5:0
+  - service: script.turn_on
+    entity_id: script.15217202925322
+
+  - wait_template: "{{ is_state('input_boolean.timer_is_over', 'on') }}"
+
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d0003667bcb
+    state: 'off'
+    for:
+      minutes: 7
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d00031b4772
+    state: 'off'
+    for:
+      minutes: 7
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d000224aa83
+    state: 'off'
+    for:
+      minutes: 7
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d0002b5d946
+    state: 'off'
+    for:
+      minutes: 7
+  - service: script.turn_on
+    entity_id: script.15217202925323
+
+
+'15217202925321':
+  alias: Up one
+  sequence:
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d0002b5d946
+    state: 'off'
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/birds.mp3
+      media_content_type: music
+  - wait_template: "{{ is_state('binary_sensor.motion_sensor_158d0002b5d946', 'on') }}"
+    timeout: '0:1:0'
+  - service: media_player.media_stop
+    entity_id: media_player.kabin
+
+
+'15217202925322':
+  alias: Up two
+  sequence:
+  - condition: state
+    entity_id: binary_sensor.motion_sensor_158d00031b4772
+    state: 'off'
+    for:
+      minutes: 15
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/birds.mp3
+      media_content_type: music
+  - wait_template: "{{ is_state('binary_sensor.motion_sensor_158d00031b4772', 'on') }}"
+    timeout: '0:5:0'
+  - service: media_player.media_stop
+    entity_id: media_player.kabin
+
+
+'15217202925323':
+  alias: Up three
+  sequence:
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/birds.mp3
+      media_content_type: music
+  - wait_template: "{{ is_state('binary_sensor.motion_sensor_158d00031b4772', 'on') }}"
+    timeout: '1:0:0'
+  - service: media_player.media_stop
+    entity_id: media_player.kabin
+
+
+
+
+
+
+
+'15217202925112':
+  alias: Say good morning at weekend
+  sequence:
+  - service: media_player.turn_on
+    entity_id: media_player.kabin
+  - delay: 0:0:4
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.0
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/invis.mp3
+      media_content_type: music
+  - delay: 0:0:10
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.3
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/birds.mp3
+      media_content_type: music
+  - delay: 0:0:6
+  - service: media_player.media_stop
+    entity_id: media_player.kabin
+  - delay: 0:0:1
+  - service: tts.google_translate_say
+    entity_id: media_player.kabin
+    data_template:
+      message: "Доброе утро. Сейчас {{states('sensor.time')}}. В Москве {{states('sensor.outdoor_temperature')|int}} градусов. Сегодня у вас выходной"
+
+
+
+
+
+'15217202933333':
+  alias: Wake up speaker!
+  sequence:
+  - service: media_player.turn_on
+    entity_id: media_player.kabin
+  - delay: 0:0:1
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.1
+  - delay: 0:0:1
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/invis.mp3
+      media_content_type: music
+  - delay: 0:0:8
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.6
+
+
+'15216502425399':
+  alias: Say hello to everyone
+  sequence:
+  - service: tts.google_translate_say
+    entity_id: media_player.kabin
+    data_template:
+      message: "Добро пожаловать домой, {% set alias = {'Арго':'Арго́', 'Армен':'Армен', 'Гаяне':'Гайанэ́', 'Олеся':'Оле́ся'} %}
+{% set people_home = states.person | selectattr('state','eq','home') | map(attribute='attributes.friendly_name') | list %}
+{% set ns = namespace(occupants = '') %}
+{% for i in people_home %}
+{% set ns.occupants = ns.occupants ~ ' & ' ~ alias.get(i,i) if loop.index > 1 else alias.get(i,i) %}
+{% endfor %}
+{{ ns.occupants }}"
+
+
+'15216502425300':
+  alias: Hello_1
+  sequence:
+  - wait_template: "{{ is_state('binary_sensor.door_window_sensor_158d0001dcb0e3', 'on') }}"
+  - condition: template
+    value_template: "{{ states('binary_sensor.motion_sensor_158d0003667bcb') != 'on' }}"
+  - condition: template
+    value_template: "{{ states('binary_sensor.motion_sensor_158d00031b4772') != 'on' }}"
+  - service: script.turn_on
+    entity_id: script.15216502425311
+  - condition: state
+    entity_id: media_player.kabin
+    state: 'idle'
+  - service: script.turn_on
+    entity_id: script.15216502425399
+
+  # - wait_template: "{{ is_state('binary_sensor.motion_sensor_158d0002b5d946', 'on') }}"
+  # - condition: state
+  #   entity_id: binary_sensor.motion_sensor_158d000224aa83
+  #   state: 'off'
+  # - service: tts.google_translate_say
+  #   entity_id: media_player.kabin
+  #   data:
+  #     message: "Сначала помыть руки!"
+
+
+'15216502425311':
+  alias: Hello_1_1
+  sequence:
+  - condition: template
+    value_template: "{{ states('media_player.kabin') != 'idle' }}"
+  - service: script.turn_on
+    entity_id: script.15217202933333
+  - delay: 00:00:10
+  - service: script.turn_on
+    entity_id: script.15216502425399
+
+
+
+
+
+'15216502425301':
+  alias: Hello_2
+  sequence:
+  - condition: state
+    entity_id: script.15216502425300
+    state: 'off'
+  - condition: state
+    entity_id: script.15216502425311
+    state: 'off'
+  - condition: state
+    entity_id: group.family
+    state: 'not_home'
+  - service: media_player.turn_on
+    entity_id: media_player.kabin
+  - delay: 0:0:4
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.0
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/invis.mp3
+      media_content_type: music
+  - delay: 0:0:10
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.6
+  - wait_template: "{{ is_state('group.family', 'home') }}"
+    timeout: 0:05:0
+  - service: tts.google_translate_say
+    entity_id: media_player.kabin
+    data_template:
+      message: "Добро пожаловать домой, {% set alias = {'Арго':'Арго́', 'Армен':'Армен', 'Гаяне':'Гайанэ́'} %}
+{% set people_home = states.person | selectattr('state','eq','home') | map(attribute='attributes.friendly_name') | list %}
+{% set ns = namespace(occupants = '') %}
+{% for i in people_home %}
+  {% set ns.occupants = ns.occupants ~ ' & ' ~ alias.get(i,i) if loop.index > 1 else alias.get(i,i) %}
+{% endfor %}
+{{ ns.occupants }}"
+  - service: script.turn_off
+    entity_id: script.15216502425300
+
+
+
+
+
+
+'15216502017583':
+  alias: Jolka lights
+  sequence:
+
+  - service: media_player.turn_on
+    entity_id: media_player.kabin
+  - delay: 0:0:4
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.0
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/invis.mp3
+      media_content_type: music
+  - delay: 0:0:10
+  - service: media_player.volume_set
+    entity_id: media_player.kabin
+    data:
+      volume_level: 0.8
+
+  - service: media_player.play_media
+    data:
+      entity_id: media_player.kabin
+      media_content_id: https://example.com:8123/local/sounds/new_year.mp3
+      media_content_type: music
+  - service: media_player.volume_mute
+    data:
+      is_volume_muted: true
+    entity_id: media_player.televizor
+  - delay: 0:0:6
+
+  - service: scene.create
+    data:
+      scene_id: before
+      snapshot_entities:
+        - switch.wall_switch_left_158d00022363c5
+        - switch.wall_switch_right_158d00022363c5
+        - switch.wall_switch_158d000236aa6a
+        - switch.wall_switch_left_158d000245c5ca
+        - switch.wall_switch_right_158d000245c5ca
+        - switch.wall_switch_158d0002ec4a59
+  - service: switch.turn_off
+    entity_id: group.all_real_lights
+  - service: switch.turn_off
+    entity_id: switch.wall_switch_158d0002ec4a59
+  - delay: 0:0:1
+  - service: switch.turn_on
+    entity_id: switch.xiaomi_miio_switch
+  - data:
+      entity_id: light.pre_hall_light
+      effect: 'Slowdown'
+    service: light.turn_on
+
+  - delay: 0:0:31
+  - service: media_player.media_stop
+    entity_id: media_player.kabin
+  - service: tts.google_translate_say
+    entity_id: media_player.kabin
+    data_template:
+      message: "С новым годом, {% set alias = {'Арго':'Арго́', 'Армен':'Армен', 'Гаяне':'Гайанэ́'} %}
+{% set people_home = states.person | selectattr('state','eq','home') | map(attribute='attributes.friendly_name') | list %}
+{% set ns = namespace(occupants = '') %}
+{% for i in people_home %}
+  {% set ns.occupants = ns.occupants ~ ' & ' ~ alias.get(i,i) if loop.index > 1 else alias.get(i,i) %}
+{% endfor %}
+{{ ns.occupants }}"
+  - delay: 0:0:3
+  - service: media_player.volume_mute
+    data:
+      is_volume_muted: false
+    entity_id: media_player.televizor
+  - service: scene.turn_on
+    data:
+      entity_id: scene.before
+  - service: light.turn_off
+    entity_id: light.pre_hall_light
+
+
